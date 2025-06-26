@@ -94,7 +94,6 @@ class App {
         // Handle resizing
         window.addEventListener('resize', this.resize.bind(this));
     }
-	this.clock = new THREE.Clock();
 
 this.clock = new THREE.Clock();
 this.raycaster = new THREE.Raycaster();  // ✅ Needed for interaction
