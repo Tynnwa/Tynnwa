@@ -6,94 +6,94 @@ import { Stats } from './libs/stats.module.js';
 import { LoadingBar } from './libs/LoadingBar.js';
 import { VRButton } from './libs/VRButton.js';
 import { CanvasUI } from './libs/CanvasUI.js';
-import { GazeController } from './libs/GazeController.js'
+import { GazeController } from './libs/GazeController.js';
 import { XRControllerModelFactory } from './libs/three/jsm/XRControllerModelFactory.js';
 
-class App{
-	constructor(){
-    const container = document.createElement('div');
-    document.body.appendChild(container);
+class App {
+    constructor() {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
 
-    this.assetsPath = './assets/';
+        this.assetsPath = './assets/';
 
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 500);
-    this.camera.position.set(0, 1.6, 0);
+        // Initialize core components
+        this.clock = new THREE.Clock();
+        this.raycaster = new THREE.Raycaster();
+        this.loadingBar = new LoadingBar();
+        document.body.appendChild(this.loadingBar.dom);
+        this.stats = new Stats();
+        document.body.appendChild(this.stats.dom);
 
-    const listener = new THREE.AudioListener();
-    this.camera.add(listener); // Needed for 3D sound
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.xr.enabled = true;
+        container.appendChild(this.renderer.domElement);
 
-    this.dolly = new THREE.Object3D();
-    this.dolly.position.set(0, 0, 10);
-    this.dolly.add(this.camera);
-    this.dummyCam = new THREE.Object3D();
-    this.camera.add(this.dummyCam);
+        // Camera
+        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 500);
+        this.camera.position.set(0, 1.6, 0);
 
-    this.scene = new THREE.Scene();
-    this.scene.add(this.dolly);
+        const listener = new THREE.AudioListener();
+        this.camera.add(listener);
 
-   // 2. Play background music (non-positional, global sound)
-const bgSound = new THREE.Audio(listener);
-const audioLoader = new THREE.AudioLoader();
+        // Dolly setup
+        this.dolly = new THREE.Object3D();
+        this.dolly.position.set(0, 0, 10);
+        this.dolly.add(this.camera);
+        this.dummyCam = new THREE.Object3D();
+        this.camera.add(this.dummyCam);
 
-audioLoader.load('./assets/assets_background_music.mp3', (buffer) => {
-    console.log("Background audio loaded");
-    bgSound.setBuffer(buffer);
-    bgSound.setLoop(true);
-    bgSound.setVolume(3); // You can adjust volume
-    this.scene.add(bgSound);
+        this.scene = new THREE.Scene();
+        this.scene.add(this.dolly);
 
-    // Required: user interaction to start audio (browser policy)
-    const startAudio = () => {
-        if (!bgSound.isPlaying) {
-            bgSound.play();
-            console.log("Background music started");
-        }
-        window.removeEventListener('click', startAudio);
-    };
+        // Background music
+        const bgSound = new THREE.Audio(listener);
+        const audioLoader = new THREE.AudioLoader();
+        audioLoader.load(this.assetsPath + 'assets_background_music.mp3', (buffer) => {
+            console.log("Background audio loaded");
+            bgSound.setBuffer(buffer);
+            bgSound.setLoop(true);
+            bgSound.setVolume(3);
+            this.scene.add(bgSound);
 
-    window.addEventListener('click', startAudio);
-}, undefined, (err) => {
-    console.error("Failed to load background audio", err);
-});
-    // Box click interaction (raycasting)
-    window.addEventListener('click', (event) => {
-        const mouse = new THREE.Vector2(
-            (event.clientX / window.innerWidth) * 2 - 1,
-            -(event.clientY / window.innerHeight) * 2 + 1
-        );
-        this.raycaster.setFromCamera(mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects([interactiveBox]);
-        if (intersects.length > 0) {
-            const newColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
-            interactiveBox.material.color.set(newColor);
-        }
-    });
-}
-	
-    setEnvironment(){
-        const loader = new RGBELoader().setDataType( THREE.UnsignedByteType );
-        const pmremGenerator = new THREE.PMREMGenerator( this.renderer );
-        pmremGenerator.compileEquirectangularShader();
-        
-        const self = this;
-        
-        loader.load( './assets/hdr/venice_sunset_1k.hdr', ( texture ) => {
-          const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
-          pmremGenerator.dispose();
+            const startAudio = () => {
+                if (!bgSound.isPlaying) {
+                    bgSound.play();
+                    console.log("Background music started");
+                }
+                window.removeEventListener('click', startAudio);
+            };
 
-          self.scene.environment = envMap;
+            window.addEventListener('click', startAudio);
+        }, undefined, (err) => {
+            console.error("Failed to load background audio", err);
+        });
 
-        }, undefined, (err)=>{
-            console.error( 'An error occurred setting the environment');
-        } );
+        // Box click interaction (optional)
+        // Note: ensure 'interactiveBox' is defined somewhere in your code
+        window.addEventListener('click', (event) => {
+            const mouse = new THREE.Vector2(
+                (event.clientX / window.innerWidth) * 2 - 1,
+                -(event.clientY / window.innerHeight) * 2 + 1
+            );
+            this.raycaster.setFromCamera(mouse, this.camera);
+            const intersects = this.raycaster.intersectObjects([interactiveBox]);
+            if (intersects.length > 0) {
+                const newColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+                interactiveBox.material.color.set(newColor);
+            }
+        });
+
+        // Load environment and models
+        this.setEnvironment();
+        this.loadCollege();
+
+        // Handle resizing
+        window.addEventListener('resize', this.resize.bind(this));
     }
-    
-    resize(){
-        this.camera.aspect = window.innerWidth / window.innerHeight;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize( window.innerWidth, window.innerHeight );  
-    }
-
 	this.clock = new THREE.Clock();
 
 this.clock = new THREE.Clock();
