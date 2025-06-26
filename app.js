@@ -35,7 +35,7 @@ class App{
 const bgSound = new THREE.Audio(listener);
 const audioLoader = new THREE.AudioLoader();
 
-audioLoader.load('./assets/background_music.mp3', (buffer) => {
+audioLoader.load('./assets/assets_background_music.mp3', (buffer) => {
     console.log("Background audio loaded");
     bgSound.setBuffer(buffer);
     bgSound.setLoop(true);
