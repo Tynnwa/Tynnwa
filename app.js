@@ -18,7 +18,7 @@ class App {
 
         // Initialize core components
         this.clock = new THREE.Clock();
-        this.raycaster = new THREE.Raycaster();
+        this.raycaster = new THREE.Raycaster(); // ✅ Needed for interaction
         this.loadingBar = new LoadingBar();
         document.body.appendChild(this.loadingBar.dom);
         this.stats = new Stats();
@@ -80,11 +80,13 @@ class App {
                 -(event.clientY / window.innerHeight) * 2 + 1
             );
             this.raycaster.setFromCamera(mouse, this.camera);
-            const intersects = this.raycaster.intersectObjects([interactiveBox]);
-            if (intersects.length > 0) {
-                const newColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
-                interactiveBox.material.color.set(newColor);
-            }
+            // Assuming 'interactiveBox' is defined and accessible
+            // For example, if interactiveBox is a mesh in your scene
+            // const intersects = this.raycaster.intersectObjects([interactiveBox]);
+            // if (intersects.length > 0) {
+            //     const newColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+            //     interactiveBox.material.color.set(newColor);
+            // }
         });
 
         // Load environment and models
@@ -95,297 +97,285 @@ class App {
         window.addEventListener('resize', this.resize.bind(this));
     }
 
-this.clock = new THREE.Clock();
-this.raycaster = new THREE.Raycaster();  // ✅ Needed for interaction
-this.loadingBar = new LoadingBar();
-document.body.appendChild(this.loadingBar.dom);
-this.stats = new Stats();
-document.body.appendChild(this.stats.dom);
-
-this.raycaster = new THREE.Raycaster();
-this.loadingBar = new LoadingBar();
-document.body.appendChild(this.loadingBar.dom); // Optional if you use UI
-this.stats = new Stats();
-document.body.appendChild(this.stats.dom);
-
-this.renderer = new THREE.WebGLRenderer({ antialias: true });
-this.renderer.setPixelRatio(window.devicePixelRatio);
-this.renderer.setSize(window.innerWidth, window.innerHeight);
-this.renderer.outputEncoding = THREE.sRGBEncoding;
-this.renderer.xr.enabled = true;
-container.appendChild(this.renderer.domElement);
-
-this.setEnvironment();       // Set the environment lighting
-this.loadCollege();          // Load your glb/glTF model
-window.addEventListener('resize', this.resize.bind(this)); // Handle resizing
-
-	loadCollege(){
-        
-		const loader = new GLTFLoader( ).setPath(this.assetsPath);
-        const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath( './libs/three/js/draco/' );
-        loader.setDRACOLoader( dracoLoader );
-        
+    setEnvironment() {
+        // Implement your setEnvironment logic here
+        // For example:
+        const loader = new RGBELoader().setPath(this.assetsPath);
         const self = this;
-		
-		// Load a glTF resource
-		loader.load(
-			// resource URL
-			'college.glb',
-			// called when the resource is loaded
-			function ( gltf ) {
+        loader.load('venice_sunset_1k.hdr', (texture) => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            self.scene.environment = texture;
+            self.scene.background = texture;
+        });
+    }
 
+    loadCollege() {
+        const loader = new GLTFLoader().setPath(this.assetsPath);
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('./libs/three/js/draco/');
+        loader.setDRACOLoader(dracoLoader);
+
+        const self = this;
+
+        // Load a glTF resource
+        loader.load(
+            // resource URL
+            'college.glb',
+            // called when the resource is loaded
+            function (gltf) {
                 const college = gltf.scene.children[0];
-				self.scene.add( college );
-				
-				college.traverse(function (child) {
-    				if (child.isMesh){
-						if (child.name.indexOf("PROXY")!=-1){
-							child.material.visible = false;
-							self.proxy = child;
-						}else if (child.material.name.indexOf('Glass')!=-1){
+                self.scene.add(college);
+
+                college.traverse(function (child) {
+                    if (child.isMesh) {
+                        if (child.name.indexOf("PROXY") != -1) {
+                            child.material.visible = false;
+                            self.proxy = child;
+                        } else if (child.material.name.indexOf('Glass') != -1) {
                             child.material.opacity = 0.1;
                             child.material.transparent = true;
-                        }else if (child.material.name.indexOf("SkyBox")!=-1){
+                        } else if (child.material.name.indexOf("SkyBox") != -1) {
                             const mat1 = child.material;
-                            const mat2 = new THREE.MeshBasicMaterial({map: mat1.map});
+                            const mat2 = new THREE.MeshBasicMaterial({ map: mat1.map });
                             child.material = mat2;
                             mat1.dispose();
                         }
-					}
-				});
-                       
+                    }
+                });
+
                 const door1 = college.getObjectByName("LobbyShop_Door_1");
                 const door2 = college.getObjectByName("LobbyShop_Door_2");
                 const pos = door1.position.clone().sub(door2.position).multiplyScalar(0.5).add(door2.position);
                 const obj = new THREE.Object3D();
                 obj.name = "LobbyShop";
                 obj.position.copy(pos);
-                college.add( obj );
-                
+                college.add(obj);
+
                 self.loadingBar.visible = false;
-			
+
                 self.setupXR();
-			},
-			// called while loading is progressing
-			function ( xhr ) {
+            },
+            // called while loading is progressing
+            function (xhr) {
+                self.loadingBar.progress = (xhr.loaded / xhr.total);
+            },
+            // called when loading has errors
+            function (error) {
+                console.log('An error happened');
+            }
+        );
+    }
 
-				self.loadingBar.progress = (xhr.loaded / xhr.total);
-				
-			},
-			// called when loading has errors
-			function ( error ) {
-
-				console.log( 'An error happened' );
-
-			}
-		);
-	}
-    
-    setupXR(){
+    setupXR() {
         this.renderer.xr.enabled = true;
 
-        const btn = new VRButton( this.renderer );
-        
+        const btn = new VRButton(this.renderer);
+
         const self = this;
-        
-        const timeoutId = setTimeout( connectionTimeout, 2000 );
-        
-        function onSelectStart( event ) {
-        
+
+        const timeoutId = setTimeout(connectionTimeout, 2000);
+
+        function onSelectStart(event) {
             this.userData.selectPressed = true;
-        
         }
 
-        function onSelectEnd( event ) {
-        
+        function onSelectEnd(event) {
             this.userData.selectPressed = false;
-        
         }
-        
-        function onConnected( event ){
-            clearTimeout( timeoutId );
+
+        function onConnected(event) {
+            clearTimeout(timeoutId);
         }
-        
-        function connectionTimeout(){
+
+        function connectionTimeout() {
             self.useGaze = true;
-            self.gazeController = new GazeController( self.scene, self.dummyCam );
+            self.gazeController = new GazeController(self.scene, self.dummyCam);
         }
-        
-        this.controllers = this.buildControllers( this.dolly );
-        
-        this.controllers.forEach( ( controller ) =>{
-            controller.addEventListener( 'selectstart', onSelectStart );
-            controller.addEventListener( 'selectend', onSelectEnd );
-            controller.addEventListener( 'connected', onConnected );
+
+        this.controllers = this.buildControllers(this.dolly);
+
+        this.controllers.forEach((controller) => {
+            controller.addEventListener('selectstart', onSelectStart);
+            controller.addEventListener('selectend', onSelectEnd);
+            controller.addEventListener('connected', onConnected);
         });
-        
+
         const config = {
             panelSize: { height: 0.5 },
             height: 256,
             name: { fontSize: 50, height: 70 },
-            info: { position:{ top: 70, backgroundColor: "#ccc", fontColor:"#000" } }
+            info: { position: { top: 70, backgroundColor: "#ccc", fontColor: "#000" } }
         }
         const content = {
             name: "name",
             info: "info"
         }
-        
-        this.ui = new CanvasUI( content, config );
-        this.scene.add( this.ui.mesh );
-        
-        this.renderer.setAnimationLoop( this.render.bind(this) );
+
+        this.ui = new CanvasUI(content, config);
+        this.scene.add(this.ui.mesh);
+
+        this.renderer.setAnimationLoop(this.render.bind(this));
     }
-    
-    buildControllers( parent = this.scene ){
+
+    buildControllers(parent = this.scene) {
         const controllerModelFactory = new XRControllerModelFactory();
 
-        const geometry = new THREE.BufferGeometry().setFromPoints( [ new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, -1 ) ] );
+        const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
 
-        const line = new THREE.Line( geometry );
+        const line = new THREE.Line(geometry);
         line.scale.z = 0;
-        
+
         const controllers = [];
-        
-        for(let i=0; i<=1; i++){
-            const controller = this.renderer.xr.getController( i );
-            controller.add( line.clone() );
+
+        for (let i = 0; i <= 1; i++) {
+            const controller = this.renderer.xr.getController(i);
+            controller.add(line.clone());
             controller.userData.selectPressed = false;
-            parent.add( controller );
-            controllers.push( controller );
-            
-            const grip = this.renderer.xr.getControllerGrip( i );
-            grip.add( controllerModelFactory.createControllerModel( grip ) );
-            parent.add( grip );
+            parent.add(controller);
+            controllers.push(controller);
+
+            const grip = this.renderer.xr.getControllerGrip(i);
+            grip.add(controllerModelFactory.createControllerModel(grip));
+            parent.add(grip);
         }
-        
+
         return controllers;
     }
-    
-    moveDolly(dt){
+
+    moveDolly(dt) {
         if (this.proxy === undefined) return;
-        
+
         const wallLimit = 1.3;
         const speed = 2;
-		let pos = this.dolly.position.clone();
+        let pos = this.dolly.position.clone();
         pos.y += 1;
-        
-		let dir = new THREE.Vector3();
+
+        let dir = new THREE.Vector3();
         //Store original dolly rotation
         const quaternion = this.dolly.quaternion.clone();
         //Get rotation for movement from the headset pose
-        this.dolly.quaternion.copy( this.dummyCam.getWorldQuaternion(this.workingQuaternion) );
-		this.dolly.getWorldDirection(dir);
+        this.dolly.quaternion.copy(this.dummyCam.getWorldQuaternion(this.workingQuaternion));
+        this.dolly.getWorldDirection(dir);
         dir.negate();
-		this.raycaster.set(pos, dir);
-		
+        this.raycaster.set(pos, dir);
+
         let blocked = false;
-		
-		let intersect = this.raycaster.intersectObject(this.proxy);
-        if (intersect.length>0){
+
+        let intersect = this.raycaster.intersectObject(this.proxy);
+        if (intersect.length > 0) {
             if (intersect[0].distance < wallLimit) blocked = true;
         }
-		
-		if (!blocked){
-            this.dolly.translateZ(-dt*speed);
-            pos = this.dolly.getWorldPosition( this.origin );
-		}
-		
+
+        if (!blocked) {
+            this.dolly.translateZ(-dt * speed);
+            pos = this.dolly.getWorldPosition(this.origin);
+        }
+
         //cast left
-        dir.set(-1,0,0);
+        dir.set(-1, 0, 0);
         dir.applyMatrix4(this.dolly.matrix);
         dir.normalize();
         this.raycaster.set(pos, dir);
 
         intersect = this.raycaster.intersectObject(this.proxy);
-        if (intersect.length>0){
-            if (intersect[0].distance<wallLimit) this.dolly.translateX(wallLimit-intersect[0].distance);
+        if (intersect.length > 0) {
+            if (intersect[0].distance < wallLimit) this.dolly.translateX(wallLimit - intersect[0].distance);
         }
 
         //cast right
-        dir.set(1,0,0);
+        dir.set(1, 0, 0);
         dir.applyMatrix4(this.dolly.matrix);
         dir.normalize();
         this.raycaster.set(pos, dir);
 
         intersect = this.raycaster.intersectObject(this.proxy);
-        if (intersect.length>0){
-            if (intersect[0].distance<wallLimit) this.dolly.translateX(intersect[0].distance-wallLimit);
+        if (intersect.length > 0) {
+            if (intersect[0].distance < wallLimit) this.dolly.translateX(intersect[0].distance - wallLimit);
         }
 
         //cast down
-        dir.set(0,-1,0);
+        dir.set(0, -1, 0);
         pos.y += 1.5;
         this.raycaster.set(pos, dir);
-        
+
         intersect = this.raycaster.intersectObject(this.proxy);
-        if (intersect.length>0){
-            this.dolly.position.copy( intersect[0].point );
+        if (intersect.length > 0) {
+            this.dolly.position.copy(intersect[0].point);
         }
 
         //Restore the original rotation
-        this.dolly.quaternion.copy( quaternion );
-	}
-		
-    get selectPressed(){
-        return ( this.controllers !== undefined && (this.controllers[0].userData.selectPressed || this.controllers[1].userData.selectPressed) );    
+        this.dolly.quaternion.copy(quaternion);
     }
-    
-    showInfoboard( name, info, pos ){
-        if (this.ui === undefined ) return;
-        this.ui.position.copy(pos).add( this.workingVec3.set( 0, 1.3, 0 ) );
-        const camPos = this.dummyCam.getWorldPosition( this.workingVec3 );
-        this.ui.updateElement( 'name', info.name );
-        this.ui.updateElement( 'info', info.info );
+
+    get selectPressed() {
+        return (this.controllers !== undefined && (this.controllers[0].userData.selectPressed || this.controllers[1].userData.selectPressed));
+    }
+
+    showInfoboard(name, info, pos) {
+        if (this.ui === undefined) return;
+        // Assuming workingVec3 and origin are defined as THREE.Vector3 properties of the class
+        this.workingVec3 = this.workingVec3 || new THREE.Vector3();
+        this.origin = this.origin || new THREE.Vector3();
+
+        this.ui.position.copy(pos).add(this.workingVec3.set(0, 1.3, 0));
+        const camPos = this.dummyCam.getWorldPosition(this.workingVec3);
+        this.ui.updateElement('name', info.name);
+        this.ui.updateElement('info', info.info);
         this.ui.update();
-        this.ui.lookAt( camPos )
+        this.ui.lookAt(camPos)
         this.ui.visible = true;
         this.boardShown = name;
     }
 
-	render( timestamp, frame ){
+    render(timestamp, frame) {
         const dt = this.clock.getDelta();
-        
-        if (this.renderer.xr.isPresenting){
+
+        if (this.renderer.xr.isPresenting) {
             let moveGaze = false;
-        
-            if ( this.useGaze && this.gazeController!==undefined){
+
+            if (this.useGaze && this.gazeController !== undefined) {
                 this.gazeController.update();
                 moveGaze = (this.gazeController.mode == GazeController.Modes.MOVE);
             }
-        
-            if (this.selectPressed || moveGaze){
+
+            if (this.selectPressed || moveGaze) {
                 this.moveDolly(dt);
-                if (this.boardData){
+                if (this.boardData) {
                     const scene = this.scene;
-                    const dollyPos = this.dolly.getWorldPosition( new THREE.Vector3() );
+                    const dollyPos = this.dolly.getWorldPosition(new THREE.Vector3());
                     let boardFound = false;
                     Object.entries(this.boardData).forEach(([name, info]) => {
-                        const obj = scene.getObjectByName( name );
-                        if (obj !== undefined){
-                            const pos = obj.getWorldPosition( new THREE.Vector3() );
-                            if (dollyPos.distanceTo( pos ) < 3){
+                        const obj = scene.getObjectByName(name);
+                        if (obj !== undefined) {
+                            const pos = obj.getWorldPosition(new THREE.Vector3());
+                            if (dollyPos.distanceTo(pos) < 3) {
                                 boardFound = true;
-                                if ( this.boardShown !== name) this.showInfoboard( name, info, pos );
+                                if (this.boardShown !== name) this.showInfoboard(name, info, pos);
                             }
                         }
                     });
-                    if (!boardFound){
+                    if (!boardFound) {
                         this.boardShown = "";
                         this.ui.visible = false;
                     }
                 }
             }
         }
-        
-        if ( this.immersive != this.renderer.xr.isPresenting){
+
+        if (this.immersive != this.renderer.xr.isPresenting) {
             this.resize();
             this.immersive = this.renderer.xr.isPresenting;
         }
-        
+
         this.stats.update();
-		this.renderer.render(this.scene, this.camera);
-	}
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    resize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
 }
 
 export { App };
