@@ -16,15 +16,14 @@ class App {
 
         this.assetsPath = './assets/';
 
-        // Initialize core components
+        // Initialize core components and render setup
         this.clock = new THREE.Clock();
-        this.raycaster = new THREE.Raycaster(); // ✅ Needed for interaction
+        this.raycaster = new THREE.Raycaster();
         this.loadingBar = new LoadingBar();
         document.body.appendChild(this.loadingBar.dom);
         this.stats = new Stats();
         document.body.appendChild(this.stats.dom);
 
-        // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -32,7 +31,7 @@ class App {
         this.renderer.xr.enabled = true;
         container.appendChild(this.renderer.domElement);
 
-        // Camera
+        // Camera setup
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 500);
         this.camera.position.set(0, 1.6, 0);
 
@@ -49,6 +48,11 @@ class App {
         this.scene = new THREE.Scene();
         this.scene.add(this.dolly);
 
+        // Initialize working vectors for calculations
+        this.workingQuaternion = new THREE.Quaternion();
+        this.workingVec3 = new THREE.Vector3();
+        this.origin = new THREE.Vector3();
+
         // Background music
         const bgSound = new THREE.Audio(listener);
         const audioLoader = new THREE.AudioLoader();
@@ -64,28 +68,36 @@ class App {
                     bgSound.play();
                     console.log("Background music started");
                 }
+                // Remove the event listener after the audio starts to prevent multiple plays
                 window.removeEventListener('click', startAudio);
             };
 
+            // Start audio on first user interaction (e.g., click)
             window.addEventListener('click', startAudio);
         }, undefined, (err) => {
             console.error("Failed to load background audio", err);
         });
 
-        // Box click interaction (optional)
-        // Note: ensure 'interactiveBox' is defined somewhere in your code
+        // Box click interaction (optional) - you mentioned interactiveBox but it's not defined
+        // If you have an interactiveBox in your scene, make sure it's created and added to the scene.
+        // For example:
+        // const geometry = new THREE.BoxGeometry(1, 1, 1);
+        // const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        // const interactiveBox = new THREE.Mesh(geometry, material);
+        // interactiveBox.position.set(0, 1, -5); // Example position
+        // this.scene.add(interactiveBox); // Add it to your scene
+
         window.addEventListener('click', (event) => {
             const mouse = new THREE.Vector2(
                 (event.clientX / window.innerWidth) * 2 - 1,
                 -(event.clientY / window.innerHeight) * 2 + 1
             );
             this.raycaster.setFromCamera(mouse, this.camera);
-            // Assuming 'interactiveBox' is defined and accessible
-            // For example, if interactiveBox is a mesh in your scene
+            // Uncomment and use 'interactiveBox' if it's defined and added to the scene
             // const intersects = this.raycaster.intersectObjects([interactiveBox]);
             // if (intersects.length > 0) {
             //     const newColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
-            //     interactiveBox.material.color.set(newColor);
+            //     intersects[0].object.material.color.set(newColor);
             // }
         });
 
@@ -97,15 +109,16 @@ class App {
         window.addEventListener('resize', this.resize.bind(this));
     }
 
+    // You need to define setEnvironment method within the class
     setEnvironment() {
-        // Implement your setEnvironment logic here
-        // For example:
         const loader = new RGBELoader().setPath(this.assetsPath);
         const self = this;
         loader.load('venice_sunset_1k.hdr', (texture) => {
             texture.mapping = THREE.EquirectangularReflectionMapping;
             self.scene.environment = texture;
             self.scene.background = texture;
+        }, undefined, (err) => {
+            console.error("Failed to load environment map", err);
         });
     }
 
@@ -161,7 +174,7 @@ class App {
             },
             // called when loading has errors
             function (error) {
-                console.log('An error happened');
+                console.error('An error happened while loading college.glb', error);
             }
         );
     }
@@ -169,7 +182,7 @@ class App {
     setupXR() {
         this.renderer.xr.enabled = true;
 
-        const btn = new VRButton(this.renderer);
+        const btn = new VRButton(this.renderer); // Make sure VRButton is imported and correctly linked
 
         const self = this;
 
@@ -189,6 +202,7 @@ class App {
 
         function connectionTimeout() {
             self.useGaze = true;
+            // Make sure GazeController is imported and correctly linked
             self.gazeController = new GazeController(self.scene, self.dummyCam);
         }
 
@@ -200,17 +214,19 @@ class App {
             controller.addEventListener('connected', onConnected);
         });
 
+        // CanvasUI configuration
         const config = {
             panelSize: { height: 0.5 },
             height: 256,
             name: { fontSize: 50, height: 70 },
             info: { position: { top: 70, backgroundColor: "#ccc", fontColor: "#000" } }
-        }
+        };
         const content = {
             name: "name",
             info: "info"
-        }
+        };
 
+        // Make sure CanvasUI is imported and correctly linked
         this.ui = new CanvasUI(content, config);
         this.scene.add(this.ui.mesh);
 
@@ -313,16 +329,16 @@ class App {
 
     showInfoboard(name, info, pos) {
         if (this.ui === undefined) return;
-        // Assuming workingVec3 and origin are defined as THREE.Vector3 properties of the class
-        this.workingVec3 = this.workingVec3 || new THREE.Vector3();
-        this.origin = this.origin || new THREE.Vector3();
+
+        // Ensure workingVec3 is initialized
+        if (!this.workingVec3) this.workingVec3 = new THREE.Vector3();
 
         this.ui.position.copy(pos).add(this.workingVec3.set(0, 1.3, 0));
         const camPos = this.dummyCam.getWorldPosition(this.workingVec3);
         this.ui.updateElement('name', info.name);
         this.ui.updateElement('info', info.info);
         this.ui.update();
-        this.ui.lookAt(camPos)
+        this.ui.lookAt(camPos);
         this.ui.visible = true;
         this.boardShown = name;
     }
@@ -340,6 +356,7 @@ class App {
 
             if (this.selectPressed || moveGaze) {
                 this.moveDolly(dt);
+                // Ensure boardData is defined before accessing it
                 if (this.boardData) {
                     const scene = this.scene;
                     const dollyPos = this.dolly.getWorldPosition(new THREE.Vector3());
@@ -361,6 +378,9 @@ class App {
                 }
             }
         }
+
+        // Ensure 'immersive' property is initialized if used for the first time here
+        if (this.immersive === undefined) this.immersive = false;
 
         if (this.immersive != this.renderer.xr.isPresenting) {
             this.resize();
