@@ -57,44 +57,49 @@ this.scene = new THREE.Scene();
         this.scene.add( this.dolly );
 
         
+// 2. Play background music (non-positional, global sound)
+const bgSound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
 
+audioLoader.load('./assets/background_music.mp3', (buffer) => {
+    console.log("Background audio loaded");
+    bgSound.setBuffer(buffer);
+    bgSound.setLoop(true);
+    bgSound.setVolume(3); // volume level
+    this.scene.add(bgSound);
+
+    const startAudio = () => {
+        if (!bgSound.isPlaying) {
+            bgSound.play();
+            console.log("Background music started");
+        }
+        window.removeEventListener('click', startAudio);
+    };
+
+    window.addEventListener('click', startAudio);
+}, undefined, (err) => {
+    console.error("Failed to load background audio", err);
+});
+  
 const ambient = new THREE.HemisphereLight(0xFFFFFF, 0xAAAAAA, 0.8);
 
 this.scene.add(ambient);
-
-
-
 this.renderer = new THREE.WebGLRenderer({ antialias: true });
-
 this.renderer.setPixelRatio( window.devicePixelRatio );
-
 this.renderer.setSize( window.innerWidth, window.innerHeight );
-
 this.renderer.outputEncoding = THREE.sRGBEncoding;
 
 container.appendChild( this.renderer.domElement );
 
         this.setEnvironment();
-
-
         window.addEventListener( 'resize', this.resize.bind(this) );
 
-        
-
         this.clock = new THREE.Clock();
-
         this.up = new THREE.Vector3(0,1,0);
-
         this.origin = new THREE.Vector3();
-
         this.workingVec3 = new THREE.Vector3();
-
         this.workingQuaternion = new THREE.Quaternion();
-
         this.raycaster = new THREE.Raycaster();
-
-        
-
         this.stats = new Stats();
 
 container.appendChild( this.stats.dom );
