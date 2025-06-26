@@ -95,6 +95,14 @@ audioLoader.load('./assets/assets_background_music.mp3', (buffer) => {
     }
 
 	this.clock = new THREE.Clock();
+
+this.clock = new THREE.Clock();
+this.raycaster = new THREE.Raycaster();  // ✅ Needed for interaction
+this.loadingBar = new LoadingBar();
+document.body.appendChild(this.loadingBar.dom);
+this.stats = new Stats();
+document.body.appendChild(this.stats.dom);
+
 this.raycaster = new THREE.Raycaster();
 this.loadingBar = new LoadingBar();
 document.body.appendChild(this.loadingBar.dom); // Optional if you use UI
