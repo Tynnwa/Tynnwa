@@ -93,7 +93,25 @@ audioLoader.load('./assets/assets_background_music.mp3', (buffer) => {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize( window.innerWidth, window.innerHeight );  
     }
-    
+
+	this.clock = new THREE.Clock();
+this.raycaster = new THREE.Raycaster();
+this.loadingBar = new LoadingBar();
+document.body.appendChild(this.loadingBar.dom); // Optional if you use UI
+this.stats = new Stats();
+document.body.appendChild(this.stats.dom);
+
+this.renderer = new THREE.WebGLRenderer({ antialias: true });
+this.renderer.setPixelRatio(window.devicePixelRatio);
+this.renderer.setSize(window.innerWidth, window.innerHeight);
+this.renderer.outputEncoding = THREE.sRGBEncoding;
+this.renderer.xr.enabled = true;
+container.appendChild(this.renderer.domElement);
+
+this.setEnvironment();       // Set the environment lighting
+this.loadCollege();          // Load your glb/glTF model
+window.addEventListener('resize', this.resize.bind(this)); // Handle resizing
+
 	loadCollege(){
         
 		const loader = new GLTFLoader( ).setPath(this.assetsPath);
